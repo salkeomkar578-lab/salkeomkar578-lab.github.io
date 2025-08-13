@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-lang-key="appTitle"></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF and html2canvas CDN for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff;
+            background-image: url('https://generativelanguage.googleapis.com/v1beta/files/uploaded:ChatGPT Image Aug 1, 2025, 07_13_57 PM.jpg-c5382aec-4f05-4e7e-893b-43d7c10c9ff2?key=');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #333;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+
+        .prose p {
+            margin-bottom: 0.5em;
+        }
+        .prose ul {
+            list-style-type: disc;
+            margin-left: 1.5em;
+        }
+        .prose ol {
+            list-style-type: decimal;
+            margin-left: 1.5em;
+        }
+
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fadeInSlideUp {
+            animation: fadeInSlideUp 0.6s ease-out forwards;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideOutLeft {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+        }
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+        }
+
+        .step-transition-enter {
+            animation: slideInRight 0.5s ease-out forwards;
+        }
+        .step-transition-exit-left {
+            animation: slideOutLeft 0.5s ease-out forwards;
+        }
+        .step-transition-enter-left {
+            animation: slideInLeft 0.5s ease-out forwards;
+        }
+        .step-transition-exit-right {
+            animation: slideOutRight 0.5s ease-out forwards;
+        }
+
+        .step-container {
+            position: relative;
+            overflow: hidden;
+            min-height: 250px; /* Adjusted for new step content */
+        }
+        .form-step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem 0;
+        }
+        label.input-label-with-icon {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        label.input-label-with-icon svg {
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .fade-out { animation: fadeOut 0.5s ease-out forwards; }
+
+        .chat-window {
+            width: 350px;
+            height: 450px;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #10B981;
+            color: white;
+            padding: 1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+        .chat-input-area {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #E5E7EB;
+        }
+        .chat-message-user {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
+            align-self: flex-end;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-message-ai {
+            background-color: #ECFDF5;
+            color: #065F46;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.5rem;
+            align-self: flex-start;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        .robot-logo {
+            margin-right: 8px;
+        }
+
+        @keyframes bounceIn {
+            0%, 20%, 40%, 60%, 80%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        .animate-bounce-in {
+            animation: bounceIn 1s ease-out;
+        }
+
+        /* New Animations */
+        @keyframes zoomIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        @keyframes swingIn {
+            0% {
+                transform: rotateX(-90deg);
+                opacity: 0;
+            }
+            100% {
+                transform: rotateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes fadeInSlideRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        /* New animation for the survey section */
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            70% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        .animate-popIn {
+            animation: popIn 0.5s ease-out forwards;
+        }
+
+
+        .animate-zoomIn {
+            animation: zoomIn 0.5s ease-out forwards;
+        }
+        .animate-swingIn {
+            animation: swingIn 0.6s ease-out forwards;
+        }
+        .animate-slideRight {
+            animation: fadeInSlideRight 0.6s ease-out forwards;
+        }
+
+        /* Styling for select options with icons (will be handled by JS) */
+        .select-with-icons option {
+            padding-left: 10px; /* Add some padding for the icon */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="landingPage" class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-100 fade-in">
+        <div class="text-center p-8 bg-white rounded-xl shadow-2xl">
+            <h1 class="text-5xl font-extrabold text-green-800 mb-6 animate-bounce-in" data-lang-key="landingTitle">Welcome to AI Climate-Friendly Diet Planner</h1>
+            <p class="text-xl text-gray-700 mb-8" data-lang-key="landingSubtitle">Get personalized diet plans for a healthier you and a healthier planet.</p>
+            <button id="startButton" class="py-3 px-8 rounded-lg text-white font-bold text-xl bg-green-600 hover:bg-green-700 active:scale-95 transition-all duration-300" data-lang-key="startButton">Get Started</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-3xl border border-gray-200 z-10 hidden">
+        <h1 class="text-4xl font-extrabold text-center text-green-800 mb-8 animate-bounce-in" data-lang-key="mainTitle">
+            AI Climate-Friendly Diet Planner
+        </h1>
+
+        <div class="flex justify-end mb-4">
+            <select id="languageSelector" class="px-3 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="mr">मराठी</option>
+            </select>
+        </div>
+
+        <div class="flex justify-center mb-6 space-x-2">
+            <span id="stepIndicator1" class="h-3 w-3 rounded-full bg-green-500 transition-all duration-300"></span>
+            <span id="stepIndicator2" class="h-3 w-3 rounded-full bg-gray-300 transition-all duration-300"></span>
+            <span id="stepIndicator3" class="h-3 w-3 rounded-full bg-gray-300 transition-all duration-300"></span>
+            <span id="stepIndicator4" class="h-3 w-3 rounded-full bg-gray-300 transition-all duration-300"></span>
+            <span id="stepIndicator5" class="h-3 w-3 rounded-full bg-gray-300 transition-all duration-300"></span>
+        </div>
+
+        <div id="formStepsContainer" class="step-container">
+            <div id="step1" class="form-step">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4" data-lang-key="step1Title">Step 1: Personal Details</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="userName" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="userNameLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            Your Name
+                        </label>
+                        <input type="text" id="userName" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200" data-lang-key="userNamePlaceholder" placeholder="e.g., Ram" />
+                    </div>
+                    <div>
+                        <label for="gender" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="genderLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4"></path><path d="M7 15h10"></path><path d="M2 15h20"></path><path d="M11 19V7a2 2 0 0 1 2-2h1"></path></svg>
+                            Gender
+                        </label>
+                        <select id="gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white animate-swingIn">
+                            <option value="" data-lang-key="selectGender" data-icon="⚧">⚧ Select gender</option>
+                            <option value="Male" data-lang-key="genderMale" data-icon="♂️">♂️ Male</option>
+                            <option value="Female" data-lang-key="genderFemale" data-icon="♀️">♀️ Female</option>
+                            <option value="Prefer not to say" data-lang-key="genderPreferNotSay" data-icon="❓">❓ Prefer not to say</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="ageRange" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="ageRangeLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M7 10h10v12H7z"></path><path d="M12 2v8"></path><path d="M15 15h-6"></path><path d="M18 18h-6"></path></svg>
+                            Your Age Range
+                        </label>
+                        <select id="ageRange" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white">
+                            <option value="" data-lang-key="selectAgeRange">Select age range</option>
+                            <option value="0-12 (Child)" data-lang-key="ageChild">0-12 (Child)</option>
+                            <option value="13-18 (Teenager)" data-lang-key="ageTeenager">13-18 (Teenager)</option>
+                            <option value="19-30 (Young Adult)" data-lang-key="ageYoungAdult">19-30 (Young Adult)</option>
+                            <option value="31-50 (Adult)" data-lang-key="ageAdult">31-50 (Adult)</option>
+                            <option value="51-65 (Middle-Aged)" data-lang-key="ageMiddleAged">51-65 (Middle-Aged)</option>
+                            <option value="65+ (Senior)" data-lang-key="ageSenior">65+ (Senior)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="dietPreference" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="dietPreferenceLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M12 22s-8-4-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2A8 8 0 0 1 12 22z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            Diet Preference
+                        </label>
+                        <select id="dietPreference" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white animate-slideRight">
+                            <option value="" data-lang-key="selectDietPreference" data-icon="🥗">🥗 Select preference</option>
+                            <option value="Vegetarian" data-lang-key="dietVeg" data-icon="🥦">🥦 Vegetarian</option>
+                            <option value="Non-Vegetarian" data-lang-key="dietNonVeg" data-icon="🍗">🍗 Non-Vegetarian</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step2" class="form-step hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4" data-lang-key="step2Title">Step 2: Physical Attributes</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="height" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="heightLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M18 10a8 8 0 0 1-14.936 3.018c-.058.11-.115.22-.17.33a8.9 8.9 0 0 0 4.14 7.643 9 9 0 0 0 13.568-11.838A7.8 7.8 0 0 0 18 10z"></path></svg>
+                            Height (cm)
+                        </label>
+                        <input type="number" id="height" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200" data-lang-key="heightPlaceholder" placeholder="e.g., 170" min="1" />
+                    </div>
+                    <div>
+                        <label for="weight" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="weightLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M18 2h-4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"></path><path d="M12 6h-2"></path><path d="M12 10h-2"></path><path d="M12 14h-2"></path><path d="M12 18h-2"></path><path d="M12 12h-2"></path><path d="M6 14H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M18 14h2a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path></svg>
+                            Weight (kg)
+                        </label>
+                        <input type="number" id="weight" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200" data-lang-key="weightPlaceholder" placeholder="e.g., 70" min="1" />
+                    </div>
+                </div>
+            </div>
+
+            <div id="step3" class="form-step hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4" data-lang-key="step3Title">Step 3: Location & Season</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="country" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="countryLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            Your Country
+                        </label>
+                        <select id="country" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white">
+                            <option value="" data-lang-key="selectCountry">Select a country</option>
+                            <option value="India">India</option>
+                            <option value="United States">United States</option>
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="Canada">Canada</option>
+                            <option value="Australia">Australia</option>
+                            <option value="Germany">Germany</option>
+                            <option value="France">France</option>
+                            <option value="Japan">Japan</option>
+                            <option value="Brazil">Brazil</option>
+                            <option value="China">China</option>
+                            <option value="Other" data-lang-key="countryOther">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="city" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="cityLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M12 22s-8-4-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2A8 8 0 0 1 12 22z"></path></svg>
+                            Your City
+                        </label>
+                        <input type="text" id="city" list="citySuggestions" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200" data-lang-key="cityPlaceholder" placeholder="e.g., Mumbai, New York" />
+                        <datalist id="citySuggestions"></datalist>
+                    </div>
+                    <div>
+                        <label for="season" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="seasonLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M12 2v20"></path><path d="M17 5H7"></path><path d="M17 19H7"></path></svg>
+                            Current Season
+                        </label>
+                        <select id="season" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white">
+                            <option value="" data-lang-key="selectSeason">Select a season</option>
+                            <option value="Winter" data-lang-key="seasonWinter">Winter</option>
+                            <option value="Rainy" data-lang-key="seasonRainy">Rainy</option>
+                            <option value="Summer" data-lang-key="seasonSummer">Summer</option>
+                            <option value="Spring" data-lang-key="seasonSpring">Spring</option>
+                            <option value="Autumn" data-lang-key="seasonAutumn">Autumn</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step4" class="form-step hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4" data-lang-key="step4Title">Step 4: Your Health Goal</h2>
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label for="healthGoal" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="goalLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-10h2v4h-2zm0-4h2v2h-2z"></path></svg>
+                            What is your primary health goal? (Optional)
+                        </label>
+                        <select id="healthGoal" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200 bg-white">
+                            <option value="" data-lang-key="selectGoal">Select a goal</option>
+                            <option value="Lose Weight" data-lang-key="goalLoseWeight">Lose Weight</option>
+                            <option value="Gain Weight" data-lang-key="goalGainWeight">Gain Weight</option>
+                            <option value="Maintain Weight" data-lang-key="goalMaintainWeight">Maintain Weight</option>
+                            <option value="Body Recomposition" data-lang-key="goalBodyRecomposition">Body Recomposition</option>
+                            <option value="Control Diabetes" data-lang-key="goalControlDiabetes">Control Diabetes</option>
+                            <option value="Manage Blood Pressure" data-lang-key="goalManageBloodPressure">Manage Blood Pressure</option>
+                            <option value="Improve Heart Health" data-lang-key="goalImproveHeartHealth">Improve Heart Health</option>
+                            <option value="Support Thyroid/PCOS" data-lang-key="goalSupportThyroidPCOS">Support Thyroid/PCOS</option>
+                            <option value="Boost Immunity" data-lang-key="goalBoostImmunity">Boost Immunity</option>
+                            <option value="Improve Digestion" data-lang-key="goalImproveDigestion">Improve Digestion</option>
+                            <option value="Enhance Skin & Hair" data-lang-key="goalEnhanceSkinHair">Enhance Skin & Hair</option>
+                            <option value="Increase Energy & Stamina" data-lang-key="goalIncreaseEnergyStamina">Increase Energy & Stamina</option>
+                            <option value="Improve Mental Clarity" data-lang-key="goalImproveMentalClarity">Improve Mental Clarity</option>
+                            <option value="Detox / Clean Eating" data-lang-key="goalDetoxCleanEating">Detox / Clean Eating</option>
+                            <option value="Eat Seasonal (Ayurvedic)" data-lang-key="goalEatSeasonalAyurvedic">Eat Seasonal (Ayurvedic)</option>
+                            <option value="Vegetarian/Vegan Lifestyle" data-lang-key="goalVegetarianVeganLifestyle">Vegetarian/Vegan Lifestyle</option>
+                            <option value="Balanced & Mindful Eating" data-lang-key="goalBalancedMindfulEating">Balanced & Mindful Eating</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step5" class="form-step hidden">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4" data-lang-key="step5Title">Step 5: Health Conditions (Optional)</h2>
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label for="diseases" class="input-label-with-icon text-lg font-medium text-gray-700" data-lang-key="diseasesLabel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                            Health Conditions (optional, comma-separated)
+                        </label>
+                        <input type="text" id="diseases" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500 transition duration-200" data-lang-key="diseasesPlaceholder" placeholder="e.g., Diabetes, High Blood Pressure" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between mt-8">
+            <button id="prevStepBtn" class="py-2 px-6 rounded-lg text-gray-700 font-bold text-lg border border-gray-300 bg-gray-100 hover:bg-gray-200 transition duration-200 hidden" data-lang-key="prevButton">
+                Previous
+            </button>
+            <button id="nextStepBtn" class="py-2 px-6 rounded-lg text-white font-bold text-lg bg-green-600 hover:bg-green-700 transition duration-200" data-lang-key="nextButton">
+                Next
+            </button>
+            <button
+                id="generateDietPlanBtn"
+                class="py-3 px-6 rounded-lg text-white font-bold text-xl shadow-lg transform transition-all duration-300 bg-green-600 hover:bg-green-700 active:scale-95 hidden"
+            >
+                <span id="dietPlanBtnText" data-lang-key="generateDietPlanButton">Generate Diet Plan</span>
+                <div id="dietPlanSpinner" class="hidden flex items-center justify-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span data-lang-key="generatingDietPlan">Generating Diet Plan...</span>
+                </div>
+            </button>
+        </div>
+
+        <div id="errorDisplay" class="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg hidden">
+            <p class="font-semibold" data-lang-key="errorTitle">Error:</p>
+            <p id="errorMessage"></p>
+        </div>
+
+        <div id="dietPlanDisplay" class="mt-8 p-6 bg-green-50 rounded-xl border border-green-200 shadow-inner hidden animate-fadeInSlideUp">
+            <h2 class="text-2xl font-bold text-green-800 mb-4" data-lang-key="personalizedDietPlanTitle">Your Personalized Diet Plan:</h2>
+            <div id="dailyWaterIntake" class="text-lg font-semibold text-blue-800 mb-4"></div>
+            <div id="dietPlanContent" class="prose max-w-none text-gray-800 leading-relaxed"></div>
+
+            <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                <button
+                    id="generateShoppingListBtn"
+                    class="flex-1 py-3 px-6 rounded-lg text-white font-bold text-lg shadow-lg transform transition-all duration-300 bg-blue-600 hover:bg-blue-700 active:scale-95"
+                >
+                    <span id="shoppingListBtnText" data-lang-key="generateShoppingListButton">✨ Generate Shopping List</span>
+                    <div id="shoppingListSpinner" class="hidden flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span data-lang-key="generatingList">Generating List...</span>
+                    </div>
+                </button>
+
+                <button
+                    id="getNutritionalInfoBtn"
+                    class="flex-1 py-3 px-6 rounded-lg text-white font-bold text-lg shadow-lg transform transition-all duration-300 bg-purple-600 hover:bg-purple-700 active:scale-95"
+                >
+                    <span id="nutritionalInfoBtnText" data-lang-key="getNutritionalSummaryButton">✨ Get Nutritional Summary</span>
+                    <div id="nutritionalInfoSpinner" class="hidden flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span data-lang-key="gettingInfo">Getting Info...</span>
+                    </div>
+                </button>
+            </div>
+
+            <button
+                id="downloadPlanBtn"
+                class="w-full py-3 px-6 mt-4 rounded-lg text-white font-bold text-lg shadow-lg transform transition-all duration-300 bg-gray-600 hover:bg-gray-700 active:scale-95"
+                data-lang-key="downloadPlanButton"
+            >
+                ⬇️ Download Full Plan
+            </button>
+
+            <div id="shoppingListDisplay" class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200 shadow-inner hidden animate-fadeInSlideUp">
+                <h3 class="text-xl font-bold text-blue-800 mb-3" data-lang-key="shoppingListTitle">Shopping List:</h3>
+                <div id="shoppingListContent" class="prose max-w-none text-gray-800 leading-relaxed"></div>
+            </div>
+
+            <div id="nutritionalInfoDisplay" class="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-200 shadow-inner hidden animate-fadeInSlideUp">
+                <h3 class="text-xl font-bold text-purple-800 mb-3" data-lang-key="nutritionalSummaryTitle">Nutritional Summary:</h3>
+                <div id="nutritionalInfoContent" class="prose max-w-none text-gray-800 leading-relaxed"></div>
+            </div>
+
+            <!-- New Quick Survey Section -->
+            <div id="quickSurveySection" class="mt-8 p-6 bg-yellow-50 rounded-xl border border-yellow-200 shadow-inner hidden animate-popIn">
+                <h3 class="text-xl font-bold text-yellow-800 mb-3" data-lang-key="quickSurveyTitle">Quick Survey</h3>
+                <p class="text-gray-700 mb-4" data-lang-key="quickSurveyText">We'd love to hear your feedback! Please take a moment to complete our quick survey:</p>
+                <a href="https://forms.gle/1uq3ZTaHUgeXyUu97" target="_blank" class="inline-block bg-yellow-600 text-white py-3 px-6 rounded-lg font-bold text-lg shadow-md hover:bg-yellow-700 transition duration-300" data-lang-key="quickSurveyLinkText">
+                    Click for Quick Survey
+                </a>
+            </div>
+
+            <div class="mt-8 p-4 bg-gray-100 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <h3 class="font-semibold text-gray-800 mb-2" data-lang-key="referencesDisclaimerTitle">General References & Disclaimer:</h3>
+                <p data-lang-key="referencesDisclaimerText1">The diet plan, shopping list, and nutritional summary are generated by an AI model based on its training data, which includes general nutritional guidelines, climate-friendly dietary principles, and publicly available information on food systems. For specific details on government-provided food products or health conditions, please refer to official government websites relevant to your location or consult with a certified healthcare professional or registered dietitian.</p>
+                <p class="mt-2" data-lang-key="referencesDisclaimerText2">This tool provides generalized suggestions and should not be considered a substitute for professional medical or dietary advice.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div id="chatBotContainer" class="fixed bottom-4 right-4 z-50">
+        <button id="chatToggleBtn" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="robot-logo"><path d="M12 2a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"></path><path d="M8.5 10a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"></path><path d="M15.5 10a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"></path><path d="M12 17v4"></path><path d="M10 21h4"></path><path d="M12 22a1 1 0 0 0-1 1h2a1 1 0 0 0-1-1z"></path></svg>
+        </button>
+        <div id="chatBotWindow" class="chat-window hidden absolute bottom-20 right-0">
+            <div class="chat-header">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="robot-logo"><path d="M12 2a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"></path><path d="M8.5 10a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"></path><path d="M15.5 10a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"></path><path d="M12 17v4"></path><path d="M10 21h4"></path><path d="M12 22a1 1 0 0 0-1 1h2a1 1 0 0 0-1-1z"></path></svg>
+                    <span data-lang-key="chatbotTitle">AI Diet Bot</span>
+                </div>
+                <button id="closeChatBtn" class="text-white focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg>
+                </button>
+            </div>
+            <div id="chatMessages" class="chat-messages flex flex-col">
+                <div class="chat-message-ai" data-lang-key="chatbotWelcome">Hello! How can I help you with your climate-friendly diet today?</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 mr-2" data-lang-key="chatPlaceholder" placeholder="Type your message...">
+                <button id="sendChatBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200" data-lang-key="chatSendButton">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms and Conditions Modal -->
+    <div id="termsModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto relative">
+            <h2 class="text-3xl font-bold text-green-800 mb-4" data-lang-key="termsTitle">Terms and Conditions</h2>
+            <p class="text-gray-700 mb-4" data-lang-key="termsContent1">Welcome to the AI Climate-Friendly Diet Planner. By using this tool, you agree to the following terms:</p>
+            <ul class="list-disc list-inside text-gray-700 mb-4">
+                <li data-lang-key="termsPoint1">The diet suggestions provided by this application are generated by an Artificial Intelligence model. They are based on general nutritional principles, climate-friendly food choices, and publicly available data, including information related to food products commonly associated with government schemes in India.</li>
+                <li data-lang-key="termsPoint2">**Important Disclaimer:** The diet plans and information offered here are for informational purposes only and are not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or diet. Do not disregard professional medical advice or delay in seeking it because of something you have read on this application.</li>
+                <li data-lang-key="termsPoint3">While the AI considers information related to government food programs, it does not have real-time access to specific government distribution data or individual eligibility. Users should verify any information with official government sources.</li>
+                <li data-lang-key="termsPoint4">We may store your personal health information or diet plans for AI model training or survey purposes only. We do not store any of this information beyond the current session unless you opt-in to allow us to do so.</li>
+            </ul>
+            <p class="text-gray-700 mb-6" data-lang-key="termsContent2">By clicking \"Accept\", you acknowledge that you have read, understood, and agree to these terms.</p>
+            <button id="acceptTermsBtn" class="py-2 px-6 rounded-lg text-white font-bold bg-green-600 hover:bg-green-700 transition duration-200" data-lang-key="acceptTermsButton">Accept</button>
+            <button id="closeTermsBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg>
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        const userNameInput = document.getElementById('userName');
+        const genderSelect = document.getElementById('gender');
+        const countrySelect = document.getElementById('country');
+        const cityInput = document.getElementById('city');
+        const citySuggestionsDatalist = document.getElementById('citySuggestions');
+        const seasonSelect = document.getElementById('season');
+        const ageRangeSelect = document.getElementById('ageRange');
+        const heightInput = document.getElementById('height');
+        const weightInput = document.getElementById('weight');
+        const diseasesInput = document.getElementById('diseases'); // This is now for step 5
+        const dietPreferenceSelect = document.getElementById('dietPreference');
+        const healthGoalSelect = document.getElementById('healthGoal'); // New element for goals
+
+        const generateDietPlanBtn = document.getElementById('generateDietPlanBtn');
+        const dietPlanBtnText = document.getElementById('dietPlanBtnText');
+        const dietPlanSpinner = document.getElementById('dietPlanSpinner');
+
+        const generateShoppingListBtn = document.getElementById('generateShoppingListBtn');
+        const shoppingListBtnText = document.getElementById('shoppingListBtnText');
+        const shoppingListSpinner = document.getElementById('shoppingListSpinner');
+
+        const getNutritionalInfoBtn = document.getElementById('getNutritionalInfoBtn');
+        const nutritionalInfoBtnText = document.getElementById('nutritionalInfoBtnText');
+        const nutritionalInfoSpinner = document.getElementById('nutritionalInfoSpinner');
+
+        const downloadPlanBtn = document.getElementById('downloadPlanBtn'); // New download button
+
+        const errorDisplay = document.getElementById('errorDisplay');
+        const errorMessage = document.getElementById('errorMessage');
+
+        const dietPlanDisplay = document.getElementById('dietPlanDisplay');
+        const dailyWaterIntakeElement = document.getElementById('dailyWaterIntake');
+        const dietPlanContent = document.getElementById('dietPlanContent');
+        const shoppingListDisplay = document.getElementById('shoppingListDisplay');
+        const shoppingListContent = document.getElementById('shoppingListContent');
+        const nutritionalInfoDisplay = document.getElementById('nutritionalInfoDisplay');
+        const nutritionalInfoContent = document.getElementById('nutritionalInfoContent');
+
+        // New elements for survey section
+        const quickSurveySection = document.getElementById('quickSurveySection');
+
+        const languageSelector = document.getElementById('languageSelector');
+
+        // Updated formSteps and stepIndicators for 5 steps
+        const formSteps = [
+            document.getElementById('step1'),
+            document.getElementById('step2'),
+            document.getElementById('step3'),
+            document.getElementById('step4'), // Now goals
+            document.getElementById('step5')  // Now health conditions
+        ];
+        const stepIndicators = [
+            document.getElementById('stepIndicator1'),
+            document.getElementById('stepIndicator2'),
+            document.getElementById('stepIndicator3'),
+            document.getElementById('stepIndicator4'),
+            document.getElementById('stepIndicator5')
+        ];
+        const prevStepBtn = document.getElementById('prevStepBtn');
+        const nextStepBtn = document.getElementById('nextStepBtn');
+
+        const landingPage = document.getElementById('landingPage');
+        const mainApp = document.getElementById('mainApp');
+        const startButton = document.getElementById('startButton');
+
+        const chatBotContainer = document.getElementById('chatBotContainer');
+        const chatToggleBtn = document.getElementById('chatToggleBtn');
+        const chatBotWindow = document.getElementById('chatBotWindow');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendChatBtn = document.getElementById('sendChatBtn');
+
+        const termsModal = document.getElementById('termsModal');
+        const acceptTermsBtn = document.getElementById('acceptTermsBtn');
+        const closeTermsBtn = document.getElementById('closeTermsBtn');
+        const openTermsLink = document.createElement('a');
+
+        let currentStep = 0;
+        let currentDietPlan = null;
+        let currentShoppingList = null;
+        let currentNutritionalSummary = null;
+        let currentUserData = {}; // Store user input data
+
+        function displayError(message) {
+            errorMessage.textContent = message;
+            errorDisplay.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorDisplay.classList.add('hidden');
+            errorMessage.textContent = '';
+        }
+
+        const translations = {
+            en: {
+                appTitle: "AI Climate-Friendly Diet Planner",
+                mainTitle: "AI Climate-Friendly Diet Planner",
+                landingTitle: "Welcome to AI Climate-Friendly Diet Planner",
+                landingSubtitle: "Get personalized diet plans for a healthier you and a healthier planet.",
+                startButton: "Get Started",
+                step1Title: "Step 1: Personal Details",
+                userNameLabel: "Your Name",
+                userNamePlaceholder: "e.g., Ram",
+                genderLabel: "Gender",
+                selectGender: "Select gender",
+                genderMale: "Male",
+                genderFemale: "Female",
+                genderPreferNotSay: "Prefer not to say",
+                ageRangeLabel: "Your Age Range",
+                selectAgeRange: "Select age range",
+                ageChild: "0-12 (Child)",
+                ageTeenager: "13-18 (Teenager)",
+                ageYoungAdult: "19-30 (Young Adult)",
+                ageAdult: "31-50 (Adult)",
+                ageMiddleAged: "51-65 (Middle-Aged)",
+                ageSenior: "65+ (Senior)",
+                dietPreferenceLabel: "Diet Preference",
+                selectDietPreference: "Select preference",
+                dietVeg: "Vegetarian",
+                dietNonVeg: "Non-Vegetarian",
+                step2Title: "Step 2: Physical Attributes",
+                heightLabel: "Height (cm)",
+                heightPlaceholder: "e.g., 170",
+                weightLabel: "Weight (kg)",
+                weightPlaceholder: "e.g., 70",
+                step3Title: "Step 3: Location & Season",
+                countryLabel: "Your Country",
+                selectCountry: "Select a country",
+                countryOther: "Other (Specify below)",
+                cityLabel: "Your City",
+                cityPlaceholder: "e.g., Mumbai, New York",
+                seasonLabel: "Current Season",
+                selectSeason: "Select a season",
+                seasonWinter: "Winter",
+                seasonRainy: "Rainy",
+                seasonSummer: "Summer",
+                seasonSpring: "Spring",
+                seasonAutumn: "Autumn",
+                step4Title: "Step 4: Your Health Goal", // New title for goals step
+                goalLabel: "What is your primary health goal? (Optional)", // New label for goals, now optional
+                selectGoal: "Select a goal", // New option for goals
+                goalLoseWeight: "Lose Weight",
+                goalGainWeight: "Gain Weight",
+                goalMaintainWeight: "Maintain Weight",
+                goalBodyRecomposition: "Body Recomposition",
+                goalControlDiabetes: "Control Diabetes",
+                goalManageBloodPressure: "Manage Blood Pressure",
+                goalImproveHeartHealth: "Improve Heart Health",
+                goalSupportThyroidPCOS: "Support Thyroid/PCOS",
+                goalBoostImmunity: "Boost Immunity",
+                goalImproveDigestion: "Improve Digestion",
+                goalEnhanceSkinHair: "Enhance Skin & Hair",
+                goalIncreaseEnergyStamina: "Increase Energy & Stamina",
+                goalImproveMentalClarity: "Improve Mental Clarity",
+                goalDetoxCleanEating: "Detox / Clean Eating",
+                goalEatSeasonalAyurvedic: "Eat Seasonal (Ayurvedic)",
+                goalVegetarianVeganLifestyle: "Vegetarian/Vegan Lifestyle",
+                goalBalancedMindfulEating: "Balanced & Mindful Eating",
+                step5Title: "Step 5: Health Conditions (Optional)", // Updated title for health conditions step
+                diseasesLabel: "Health Conditions (optional, comma-separated)",
+                diseasesPlaceholder: "e.g., Diabetes, High Blood Pressure",
+                prevButton: "Previous",
+                nextButton: "Next",
+                generateDietPlanButton: "Generate Diet Plan",
+                generatingDietPlan: "Generating Diet Plan...",
+                errorTitle: "Error:",
+                personalizedDietPlanTitle: "Your Personalized Diet Plan:",
+                generateShoppingListButton: "✨ Generate Shopping List",
+                generatingList: "Generating List...",
+                getNutritionalSummaryButton: "✨ Get Nutritional Summary",
+                gettingInfo: "Getting Info...",
+                downloadPlanButton: "⬇️ Download Full Plan", // New download button text
+                shoppingListTitle: "Shopping List:",
+                nutritionalSummaryTitle: "Nutritional Summary:",
+                referencesDisclaimerTitle: "General References & Disclaimer:",
+                referencesDisclaimerText1: "The diet plan, shopping list, and nutritional summary are generated by an AI model based on its training data, which includes general nutritional guidelines, climate-friendly dietary principles, and publicly available information on food systems. For specific details on government-provided food products or health conditions, please refer to official government websites relevant to your location or consult with a certified healthcare professional or registered dietitian.",
+                referencesDisclaimerText2: "This tool provides generalized suggestions and should not be considered a substitute for professional medical or dietary advice. For further assistance, contact us at infotechaihelp@gmail.com.",
+                validationErrorNameGenderAge: "Please fill in Name, Gender, and Age Range.",
+                validationErrorHeightWeight: "Please fill in Height and Weight.",
+                validationErrorHeightWeightPositive: "Height and Weight must be positive numbers.",
+                validationErrorLocationSeason: "Please select a Country, enter a City, and select a Season.",
+                validationErrorDietPreference: "Please select your Diet Preference.",
+                validationErrorHealthGoal: "Please select your primary health goal.", // This message will now only show if a goal is selected and then cleared
+                dailyWaterIntakeLabel: "Daily Water Intake",
+                ingredientsLabel: "Ingredients",
+                benefitsLabel: "Benefits",
+                seasonalAvailabilityLabel: "Seasonal Availability",
+                generateDietPlanFirstError: "Please generate a diet plan first.",
+                failedToGenerateShoppingList: "Failed to generate shopping list",
+                failedToGetNutritionalInfo: "Failed to get nutritional information",
+                getRecipeButton: "Get Recipe",
+                generatingRecipe: "Generating Recipe...",
+                recipeTitle: "Recipe for",
+                failedToGenerateRecipe: "Failed to generate recipe",
+                chatbotTitle: "AI Diet Bot",
+                chatPlaceholder: "Type your message...",
+                chatSendButton: "Send",
+                chatbotWelcome: "Hello! How can I help you with your climate-friendly diet today?",
+                termsTitle: "Terms and Conditions",
+                termsContent1: "Welcome to the AI Climate-Friendly Diet Planner. By using this tool, you agree to the following terms:",
+                termsPoint1: "The diet suggestions provided by this application are generated by an Artificial Intelligence model. They are based on general nutritional principles, climate-friendly food choices, and publicly available data, including information related to food products commonly associated with government schemes in India.",
+                termsPoint2: "**Important Disclaimer:** The diet plans and information offered here are for informational purposes only and are not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition or diet. Do not disregard professional medical advice or delay in seeking it because of something you have read on this application.",
+                termsPoint3: "While the AI considers information related to government food programs, it does not have real-time access to specific government distribution data or individual eligibility. Users should verify any information with official government sources.",
+                termsPoint4: "We may store your personal health information or diet plans for AI model training or survey purposes only. We do not store any of this information beyond the current session unless you opt-in to allow us to do so.",
+                termsContent2: "By clicking \"Accept\", you acknowledge that you have read, understood, and agree to these terms.",
+                acceptTermsButton: "Accept",
+                termsLinkText: "Terms & Conditions",
+                quickSurveyTitle: "Quick Survey",
+                quickSurveyText: "We'd love to hear your feedback! Please take a moment to complete our quick survey:",
+                quickSurveyLinkText: "Click for Quick Survey"
+            },
+            hi: {
+                appTitle: "एआई जलवायु-अनुकूल आहार योजनाकार",
+                mainTitle: "एआई जलवायु-अनुकूल आहार योजनाकार",
+                landingTitle: "एआई जलवायु-अनुकूल आहार योजनाकार में आपका स्वागत है",
+                landingSubtitle: "अपने और ग्रह के लिए स्वस्थ आहार योजनाएं प्राप्त करें।",
+                startButton: "शुरू करें",
+                step1Title: "चरण 1: व्यक्तिगत विवरण",
+                userNameLabel: "आपका नाम",
+                userNamePlaceholder: "उदाहरण: राम",
+                genderLabel: "लिंग",
+                selectGender: "लिंग चुनें",
+                genderMale: "पुरुष",
+                genderFemale: "महिला",
+                genderNonBinary: "गैर-बाइनरी",
+                genderPreferNotSay: "बताना पसंद नहीं",
+                ageRangeLabel: "आपकी आयु सीमा",
+                selectAgeRange: "आयु सीमा चुनें",
+                ageChild: "0-12 (बच्चा)",
+                ageTeenager: "13-18 (किशोर)",
+                ageYoungAdult: "19-30 (युवा वयस्क)",
+                ageAdult: "31-50 (वयस्क)",
+                ageMiddleAged: "51-65 (मध्यम आयु वर्ग)",
+                ageSenior: "65+ (वरिष्ठ)",
+                dietPreferenceLabel: "आहार पसंद",
+                selectDietPreference: "पसंद चुनें",
+                dietVeg: "शाकाहारी",
+                dietNonVeg: "मांसाहारी",
+                step2Title: "चरण 2: शारीरिक विशेषताएँ",
+                heightLabel: "ऊंचाई (सेमी)",
+                heightPlaceholder: "उदाहरण: 170",
+                weightLabel: "वजन (किग्रा)",
+                weightPlaceholder: "उदाहरण: 70",
+                step3Title: "चरण 3: स्थान और हंगाम",
+                countryLabel: "आपका देश",
+                selectCountry: "एक देश चुनें",
+                countryOther: "अन्य (नीचे निर्दिष्ट करें)",
+                cityLabel: "आपका शहर",
+                cityPlaceholder: "उदा. मुंबई, न्यूयॉर्क",
+                seasonLabel: "वर्तमान हंगाम",
+                selectSeason: "एक हंगाम चुनें",
+                seasonWinter: "सर्दी",
+                seasonRainy: "बारिश",
+                seasonSummer: "गर्मी",
+                seasonSpring: "वसंत",
+                seasonAutumn: "शरद",
+                step4Title: "चरण 4: आपका स्वास्थ्य लक्ष्य", // New title for goals step
+                goalLabel: "आपका प्राथमिक स्वास्थ्य लक्ष्य क्या है? (ऐच्छिक)", // New label for goals, now optional
+                selectGoal: "एक लक्ष्य चुनें", // New option for goals
+                goalLoseWeight: "वजन कम करें",
+                goalGainWeight: "वजन बढ़ाएँ",
+                goalMaintainWeight: "वजन बनाए रखें",
+                goalBodyRecomposition: "शारीरिक पुनर्गठन",
+                goalControlDiabetes: "मधुमेह नियंत्रण",
+                goalManageBloodPressure: "रक्तचाप प्रबंधन",
+                goalImproveHeartHealth: "हृदय स्वास्थ्य में सुधार",
+                goalSupportThyroidPCOS: "थायराइड/पीसीओएस सहायता",
+                goalBoostImmunity: "रोग प्रतिरोधक क्षमता बढ़ाएँ",
+                goalImproveDigestion: "पाचन में सुधार",
+                goalEnhanceSkinHair: "त्वचा और बालों में सुधार",
+                goalIncreaseEnergyStamina: "ऊर्जा और सहनशक्ति बढ़ाएँ",
+                goalImproveMentalClarity: "मानसिक स्पष्टता में सुधार",
+                goalDetoxCleanEating: "डिटॉक्स / स्वच्छ भोजन",
+                goalEatSeasonalAyurvedic: "मौसमी भोजन (आयुर्वेदिक)",
+                goalVegetarianVeganLifestyle: "शाकाहारी/वीगन जीवनशैली",
+                goalBalancedMindfulEating: "संतुलित और सचेत भोजन",
+                step5Title: "चरण 5: स्वास्थ्य स्थितियाँ (ऐच्छिक)", // Updated title for health conditions step
+                diseasesLabel: "स्वास्थ्य स्थितियाँ (ऐच्छिक, कॉमा से अलग करें)",
+                diseasesPlaceholder: "उदा. मधुमेह, उच्च रक्तचाप",
+                prevButton: "पिछला",
+                nextButton: "अगला",
+                generateDietPlanButton: "आहार योजना बनाएं",
+                generatingDietPlan: "आहार योजना बन रही है...",
+                errorTitle: "त्रुटि:",
+                personalizedDietPlanTitle: "आपकी व्यक्तिगत आहार योजना:",
+                generateShoppingListButton: "✨ खरीदारी सूची बनाएं",
+                generatingList: "सूची बन रही है...",
+                getNutritionalSummaryButton: "✨ पोषण संबंधी सारांश प्राप्त करें",
+                gettingInfo: "जानकारी प्राप्त हो रही है...",
+                downloadPlanButton: "⬇️ पूरी योजना डाउनलोड करें", // New download button text
+                shoppingListTitle: "खरीदारी सूची:",
+                nutritionalSummaryTitle: "पोषण संबंधी सारांश:",
+                referencesDisclaimerTitle: "सामान्य संदर्भ और अस्वीकरण:",
+                referencesDisclaimerText1: "आहार योजना, खरीदारी सूची और पोषण संबंधी सारांश एक एआई मॉडल द्वारा उसके प्रशिक्षण डेटा के आधार पर तैयार किए जाते हैं, जिसमें सामान्य पोषण संबंधी मार्गदर्शक तत्त्व, जलवायु-अनुकूल आहार सिद्धांत और खाद्य प्रणाली के बारे में सार्वजनिक रूप से उपलब्ध जानकारी शामिल है। सरकारी खाद्य उत्पादों या स्वास्थ्य स्थितियों के बारे में विशिष्ट विवरण के लिए, कृपया अपने स्थान से संबंधित आधिकारिक सरकारी वेबसाइटों (उदा. स्वास्थ्य और परिवार कल्याण मंत्रालय, खाद्य और सार्वजनिक वितरण विभाग) देखें या प्रमाणित स्वास्थ्य पेशेवर या पंजीकृत आहार विशेषज्ञ से सलाह लें।",
+                referencesDisclaimerText2: "यह उपकरण सामान्य सुझाव प्रदान करता है और इसे व्यावसायिक चिकित्सा या आहार संबंधी सलाह का विकल्प नहीं माना जाना चाहिए। अधिक सहायता के लिए, infotechaihelp@gmail.com पर संपर्क करें।",
+                validationErrorNameGenderAge: "कृपया नाम, लिंग और आयु सीमा भरें।",
+                validationErrorHeightWeight: "कृपया ऊंचाई और वजन भरें।",
+                validationErrorHeightWeightPositive: "ऊंचाई और वजन धनात्मक संख्या होनी चाहिए।",
+                validationErrorLocationSeason: "कृपया एक देश, शहर और हंगाम चुनें।",
+                validationErrorDietPreference: "कृपया अपनी आहार प्राथमिकता चुनें।",
+                validationErrorHealthGoal: "कृपया अपना प्राथमिक स्वास्थ्य लक्ष्य चुनें।", // This message will now only show if a goal is selected and then cleared
+                dailyWaterIntakeLabel: "दैनिक पानी का सेवन",
+                ingredientsLabel: "सामग्री",
+                benefitsLabel: "लाभ",
+                seasonalAvailabilityLabel: "मौसमी उपलब्धता",
+                generateDietPlanFirstError: "कृपया पहले एक आहार योजना तैयार करें।",
+                failedToGenerateShoppingList: "खरीदारी सूची तैयार करने में विफल",
+                failedToGetNutritionalInfo: "पोषण जानकारी प्राप्त करने में विफल",
+                getRecipeButton: "रेसिपी प्राप्त करें",
+                generatingRecipe: "रेसिपी तैयार हो रही है...",
+                recipeTitle: "के लिए रेसिपी",
+                failedToGenerateRecipe: "रेसिपी तैयार करने में विफल",
+                chatbotTitle: "एआई डाइट बॉट",
+                chatPlaceholder: "अपना संदेश लिखें...",
+                chatSendButton: "भेजें",
+                chatbotWelcome: "नमस्ते! मैं आज आपके जलवायु-अनुकूल आहार में कैसे मदद कर सकता हूँ?",
+                termsTitle: "नियम और शर्तें",
+                termsContent1: "एआई जलवायु-अनुकूल आहार नियोजक में आपका स्वागत है। इस उपकरण का उपयोग करके, आप निम्नलिखित शर्तों से सहमत हैं:",
+                termsPoint1: "इस एप्लिकेशन द्वारा प्रदान किए गए आहार सुझाव आर्टिफिशियल इंटेलिजेंस मॉडल द्वारा उसके प्रशिक्षण डेटा के आधार पर तैयार किए जाते हैं, जिसमें सामान्य पोषण सिद्धांत, जलवायु-अनुकूल खाद्य विकल्प और सार्वजनिक रूप से उपलब्ध डेटा शामिल है, जिसमें भारत में सरकारी योजनाओं से संबंधित खाद्य उत्पादों की जानकारी भी शामिल है।",
+                termsPoint2: "**महत्वपूर्ण अस्वीकरण:** यहां दी गई आहार योजनाएं और जानकारी केवल सूचनात्मक उद्देश्यों के लिए हैं और व्यावसायिक चिकित्सा सलाह, निदान या उपचार का विकल्प नहीं हैं। किसी भी चिकित्सा स्थिति या आहार के संबंध में आपके किसी भी प्रश्न के लिए हमेशा अपने चिकित्सक या अन्य योग्य स्वास्थ्य प्रदाता की सलाह लें। इस एप्लिकेशन पर आपने जो कुछ पढ़ा है, उसके कारण व्यावसायिक चिकित्सा सलाह को अनदेखा न करें या उसे प्राप्त करने में देरी न करें।",
+                termsPoint3: "जबकि एआई सरकारी खाद्य कार्यक्रमों से संबंधित जानकारी पर विचार करता है, उसके पास विशिष्ट सरकारी वितरण डेटा या व्यक्तिगत पात्रता तक वास्तविक समय पहुंच नहीं है। उपयोगकर्ताओं को आधिकारिक सरकारी स्रोतों से किसी भी जानकारी को सत्यापित करना चाहिए।",
+                termsPoint4: "हम आपके व्यक्तिगत स्वास्थ्य की जानकारी या आहार योजनाओं को केवल एआई मॉडल प्रशिक्षण या सर्वेक्षण उद्देश्यों के लिए संग्रहीत कर सकते हैं। हम इस जानकारी को वर्तमान सत्र से आगे संग्रहीत नहीं करते हैं, जब तक कि आप ऐसा करने की अनुमति नहीं देते।",
+                termsContent2: "“स्वीकार करें” पर क्लिक करके, आप स्वीकार करते हैं कि आपने इन शर्तों को पढ़ लिया है, समझ लिया है और उनसे सहमत हैं।",
+                acceptTermsButton: "स्वीकार करें",
+                termsLinkText: "नियम और शर्तें",
+                quickSurveyTitle: "त्वरित सर्वेक्षण",
+                quickSurveyText: "हमें आपकी प्रतिक्रिया सुनना अच्छा लगेगा! कृपया हमारे त्वरित सर्वेक्षण को पूरा करने के लिए कुछ समय निकालें:",
+                quickSurveyLinkText: "त्वरित सर्वेक्षण के लिए क्लिक करें"
+            },
+            mr: {
+                appTitle: "एआय हवामान-अनुकूल आहार नियोजक",
+                mainTitle: "एआय हवामान-अनुकूल आहार नियोजक",
+                landingTitle: "एआय हवामान-अनुकूल आहार नियोजकमध्ये आपले स्वागत आहे",
+                landingSubtitle: "आपल्यासाठी आणि ग्रहासाठी आरोग्यदायी आहार योजना मिळवा.",
+                startButton: "सुरू करा",
+                step1Title: "पायरी 1: वैयक्तिक तपशील",
+                userNameLabel: "तुमचे नाव",
+                userNamePlaceholder: "उदा. राम",
+                genderLabel: "लिंग",
+                selectGender: "लिंग निवडा",
+                genderMale: "पुरुष",
+                genderFemale: "स्त्री",
+                genderNonBinary: "नॉन-बायनरी",
+                genderPreferNotSay: "सांगणे पसंत नाही",
+                ageRangeLabel: "तुमची वयोमर्यादा",
+                selectAgeRange: "वयोमर्यादा निवडा",
+                ageChild: "0-12 (बाल)",
+                ageTeenager: "13-18 (किशोर)",
+                ageYoungAdult: "19-30 (तरुण प्रौढ)",
+                ageAdult: "31-50 (प्रौढ)",
+                ageMiddleAged: "51-65 (मध्यमवयीन)",
+                ageSenior: "65+ (ज्येष्ठ)",
+                dietPreferenceLabel: "आहार प्राधान्य",
+                selectDietPreference: "प्राधान्य निवडा",
+                dietVeg: "शाकाहारी",
+                dietNonVeg: "मांसाहारी",
+                step2Title: "पायरी 2: शारीरिक गुणधर्म",
+                heightLabel: "उंची (सेमी)",
+                heightPlaceholder: "उदा. 170",
+                weightLabel: "वजन (किलो)",
+                weightPlaceholder: "उदा. 70",
+                step3Title: "पायरी 3: स्थान आणि हंगाम",
+                countryLabel: "तुमचा देश",
+                selectCountry: "एक देश निवडा",
+                countryOther: "इतर (खाली निर्दिष्ट करा)",
+                cityLabel: "तुमचे शहर",
+                cityPlaceholder: "उदा. मुंबई, न्यूयॉर्क",
+                seasonLabel: "सध्याचा हंगाम",
+                selectSeason: "एक हंगाम निवडा",
+                seasonWinter: "हिवाळा",
+                seasonRainy: "पावसाळा",
+                seasonSummer: "उन्हाळा",
+                seasonSpring: "वसंत",
+                seasonAutumn: "शरद",
+                step4Title: "पायरी 4: तुमचे आरोग्य ध्येय", // New title for goals step
+                goalLabel: "तुमचे प्राथमिक आरोग्य ध्येय काय आहे? (ऐच्छिक)", // New label for goals, now optional
+                selectGoal: "एक ध्येय निवडा", // New option for goals
+                goalLoseWeight: "वजन कमी करा",
+                goalGainWeight: "वजन वाढवा",
+                goalMaintainWeight: "वजन कायम ठेवा",
+                goalBodyRecomposition: "शरीर पुनर्रचना",
+                goalControlDiabetes: "मधुमेह नियंत्रण",
+                goalManageBloodPressure: "रक्तदाब व्यवस्थापन",
+                goalImproveHeartHealth: "हृदय आरोग्यात सुधारणा",
+                goalSupportThyroidPCOS: "थायरॉईड/पीसीओएस समर्थन",
+                goalBoostImmunity: "रोगप्रतिकारशक्ती वाढवा",
+                goalImproveDigestion: "पचन सुधारणे",
+                goalEnhanceSkinHair: "त्वचा आणि केसांमध्ये सुधारणा",
+                goalIncreaseEnergyStamina: "ऊर्जा आणि सहनशक्ती वाढवा",
+                goalImproveMentalClarity: "मानसिक स्पष्टता सुधारणे",
+                goalDetoxCleanEating: "डिटॉक्स / स्वच्छ खाणे",
+                goalEatSeasonalAyurvedic: "हंगामी खाणे (आयुर्वेदिक)",
+                goalVegetarianVeganLifestyle: "शाकाहारी/व्हेगन जीवनशैली",
+                goalBalancedMindfulEating: "संतुलित आणि जागरूक खाणे",
+                step5Title: "पायरी 5: आरोग्य स्थिती (ऐच्छिक)", // Updated title for health conditions step
+                diseasesLabel: "आरोग्य स्थिती (ऐच्छिक, स्वल्पविरामाने वेगळे करा)",
+                diseasesPlaceholder: "उदा. मधुमेह, उच्च रक्तदाब",
+                prevButton: "मागे",
+                nextButton: "पुढे",
+                generateDietPlanButton: "आहार योजना तयार करा",
+                generatingDietPlan: "आहार योजना तयार होत आहे...",
+                errorTitle: "त्रुटी:",
+                personalizedDietPlanTitle: "तुमची वैयक्तिक आहार योजना:",
+                generateShoppingListButton: "✨ खरेदी सूची तयार करा",
+                generatingList: "सूची तयार होत आहे...",
+                getNutritionalSummaryButton: "✨ पोषण सारांश मिळवा",
+                gettingInfo: "माहिती मिळवत आहे...",
+                downloadPlanButton: "⬇️ पूर्ण योजना डाउनलोड करा", // New download button text
+                shoppingListTitle: "खरेदी सूची:",
+                nutritionalSummaryTitle: "पोषण सारांश:",
+                referencesDisclaimerTitle: "सामान्य संदर्भ आणि अस्वीकरण:",
+                referencesDisclaimerText1: "आहार योजना, खरेदी सूची आणि पोषण सारांश एआय मॉडेलद्वारे त्याच्या प्रशिक्षण डेटाच्या आधारावर तयार केले जातात, ज्यात सामान्य पोषण मार्गदर्शक तत्त्वे, हवामान-अनुकूल आहाराची तत्त्वे आणि अन्न प्रणालींबद्दल सार्वजनिकरित्या उपलब्ध माहिती समाविष्ट आहे. सरकारी खाद्य उत्पादनांबद्दल किंवा आरोग्य स्थितींबद्दल विशिष्ट माहितीसाठी, कृपया तुमच्या स्थानाशी संबंधित अधिकृत सरकारी वेबसाइट्स (उदा. आरोग्य आणि कुटुंब कल्याण मंत्रालय, अन्न आणि सार्वजनिक वितरण विभाग) पहा किंवा प्रमाणित आरोग्य व्यावसायिक किंवा नोंदणीकृत आहारतज्ञाचा सल्ला घ्या.",
+                referencesDisclaimerText2: "हे साधन सामान्य सूचना प्रदान करते आणि व्यावसायिक वैद्यकीय किंवा आहारविषयक सल्ल्याचा पर्याय मानले जाऊ नये.",
+                validationErrorNameGenderAge: "कृपया नाव, लिंग आणि वयोमर्यादा भरा.",
+                validationErrorHeightWeight: "कृपया उंची आणि वजन भरा.",
+                validationErrorHeightWeightPositive: "उंची आणि वजन धनात्मक संख्या असावी.",
+                validationErrorLocationSeason: "कृपया एक देश, शहर आणि हंगाम निवडा.",
+                validationErrorDietPreference: "कृपया तुमची आहार प्राधान्य निवडा.",
+                validationErrorHealthGoal: "कृपया तुमचे प्राथमिक आरोग्य ध्येय निवडा.", // This message will now only show if a goal is selected and then cleared
+                dailyWaterIntakeLabel: "दररोज पाणी सेवन",
+                ingredientsLabel: "घटक",
+                benefitsLabel: "फायदे",
+                seasonalAvailabilityLabel: "हंगामी उपलब्धता",
+                generateDietPlanFirstError: "कृपया आधी एक आहार योजना तयार करा.",
+                failedToGenerateShoppingList: "खरेदी सूची तयार करण्यात अयशस्वी",
+                failedToGetNutritionalInfo: "पोषण माहिती मिळवण्यात अयशस्वी",
+                getRecipeButton: "रेसिपी प्राप्त करा",
+                generatingRecipe: "रेसिपी बन होत आहे...",
+                recipeTitle: "साठी रेसिपी",
+                failedToGenerateRecipe: "रेसिपी बन करण्यात अयशस्वी",
+                chatbotTitle: "एआय आहार बॉट",
+                chatPlaceholder: "तुमचा संदेश टाइप करा...",
+                chatSendButton: "पाठवा",
+                chatbotWelcome: "नमस्कार! मी तुम्हाला आज तुमच्या हवामान-अनुकूल आहारात कशी मदत करू शकेन?",
+                termsTitle: "अटी आणि शर्ती",
+                termsContent1: "एआय हवामान-अनुकूल आहार नियोजकमध्ये आपले स्वागत आहे. हे साधन वापरून, आपण खालील अटींना सहमती देता:",
+                termsPoint1: "या ऍप्लिकेशनद्वारे प्रदान केलेले आहार सूचना आर्टिफिशियल इंटेलिजन्स मॉडेलद्वारे तयार केले जातात. ते सामान्य पोषण तत्त्वे, हवामान-अनुकूल अन्न पर्याय आणि सार्वजनिकरित्या उपलब्ध डेटावर आधारित आहेत, ज्यात भारतातील सरकारी योजनांशी संबंधित अन्न उत्पादनांची माहिती देखील समाविष्ट आहे.",
+                termsPoint2: "**महत्वाची अस्वीकृती:** येथे दिलेले आहार योजना आणि माहिती केवळ माहितीच्या उद्देशाने आहेत आणि व्यावसायिक वैद्यकीय सल्ला, निदान किंवा उपचारांसाठी पर्याय नाहीत. कोणत्याही वैद्यकीय स्थिती किंवा आहारासंबंधी तुमच्या मनात असलेल्या कोणत्याही प्रश्नांसाठी नेहमी तुमच्या डॉक्टरांचा किंवा इतर पात्र आरोग्य प्रदाता की सल्ला घ्या. या ऍप्लिकेशनवर तुम्ही वाचलेल्या गोष्टींमुळे व्यावसायिक वैद्यकीय सल्ल्याकडे दुर्लक्ष करू नका किंवा तो मिळवण्यात विलंब करू नका.",
+                termsPoint3: "एआय सरकारी अन्न कार्यक्रमांशी संबंधित माहिती विचारात घेत असले तरी, त्याला विशिष्ट सरकारी वितरण डेटा किंवा वैयक्तिक पात्रतेसाठी वास्तविक-वेळेची उपलब्धता नाही. वापरकर्त्यांनी अधिकृत सरकारी स्त्रोतांकडून कोणतीही माहिती सत्यापित करावी.",
+                termsPoint4: "आम्ही तुमच्या वैयक्तिक आरोग्याची माहिती किंवा आहार योजना केवळ एआय मॉडेल प्रशिक्षण किंवा सर्वेक्षण उद्देशांसाठी संग्रहित करू शकतो. आम्ही ही माहिती सध्याच्या सत्रापलीकडे संग्रहित करत नाही, जोपर्यंत तुम्ही आम्हाला तसे करण्याची परवानगी देत ​​नाही.",
+                termsContent2: "“स्वीकारा” वर क्लिक करून, तुम्ही या अटी वाचल्या आहेत, समजून घेतल्या आहेत आणि त्यांना सहमती दिली आहे हे मान्य करता.",
+                acceptTermsButton: "स्वीकारा",
+                termsLinkText: "अटी आणि शर्ती",
+                quickSurveyTitle: "त्वरित सर्वेक्षण",
+                quickSurveyText: "आम्हाला तुमची प्रतिक्रिया ऐकायला आवडेल! कृपया आमचे त्वरित सर्वेक्षण पूर्ण करण्यासाठी थोडा वेळ द्या:",
+                quickSurveyLinkText: "त्वरित सर्वेक्षणासाठी क्लिक करा"
+            }
+        };
+
+
+        const countryCities = {
+            "India": ["Mumbai", "Delhi", "Bengaluru", "Chennai", "Kolkata", "Hyderabad", "Pune", "Ahmedabad", "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad", "Ludhiana", "Agra", "Nashik", "Faridabad", "Meerut", "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", "Allahabad", "Ranchi", "Howrah", "Coimbatore", "Jabalpur", "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", "Guwahati", "Chandigarh"],
+            "United States": ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco", "Indianapolis", "Seattle", "Denver", "Washington"],
+            "United Kingdom": ["London", "Birmingham", "Manchester", "Glasgow", "Liverpool", "Bristol", "Sheffield", "Leeds", "Edinburgh", "Leicester", "Coventry", "Bradford", "Cardiff", "Belfast", "Nottingham", "Kingston upon Hull", "Newcastle upon Tyne", "Stoke-on-Trent", "Southampton", "Derby"],
+            "Canada": ["Toronto", "Montreal", "Vancouver", "Calgary", "Edmonton", "Ottawa", "Winnipeg", "Quebec City", "Hamilton", "Halifax", "London", "Kitchener", "St. Catharines", "Oshawa", "Windsor"],
+            "Australia": ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Gold Coast", "Canberra", "Newcastle", "Wollongong", "Logan City", "Geelong", "Hobart", "Townsville", "Cairns", "Darwin"],
+            "Germany": ["Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt", "Stuttgart", "Düsseldorf", "Leipzig", "Dortmund", "Essen", "Bremen", "Dresden", "Hanover", "Nuremberg", "Duisburg"],
+            "France": ["Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", "Saint-Étienne", "Toulon"],
+            "Japan": ["Tokyo", "Yokohama", "Osaka", "Nagoya", "Sapporo", "Fukuoka", "Kobe", "Kyoto", "Kawasaki", "Saitama", "Hiroshima", "Sendai", "Kitakyushu", "Chiba", "Setagaya"],
+            "Brazil": ["São Paulo", "Rio de Janeiro", "Brasília", "Salvador", "Fortaleza", "Belo Horizonte", "Manaus", "Curitiba", "Recife", "Porto Alegre", "Belém", "Goiânia", "Guarulhos", "Campinas", "São Luís"],
+            "China": ["Shanghai", "Beijing", "Chongqing", "Tianjin", "Guangzhou", "Shenzhen", "Chengdu", "Nanjing", "Wuhan", "Hangzhou", "Xi'an", "Shenyang", "Qingdao", "Harbin", "Suzhou"]
+        };
+
+
+        function setLanguage(lang) {
+            document.querySelectorAll('[data-lang-key]').forEach(element => {
+                const key = element.getAttribute('data-lang-key');
+                if (translations[lang] && translations[lang][key]) {
+                    if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                        element.setAttribute('placeholder', translations[lang][key]);
+                    } else {
+                        element.textContent = translations[lang][key];
+                    }
+                }
+            });
+            document.title = translations[lang].appTitle || "AI Climate-Friendly Diet Planner";
+
+            if (currentDietPlan) {
+                renderDietPlanContent(currentDietPlan, lang);
+            }
+            if (!shoppingListDisplay.classList.contains('hidden')) {
+                document.querySelector('#shoppingListDisplay h3').textContent = translations[lang].shoppingListTitle;
+            }
+            if (!nutritionalInfoDisplay.classList.contains('hidden')) {
+                document.querySelector('#nutritionalInfoDisplay h3').textContent = translations[lang].nutritionalSummaryTitle;
+            }
+            // Update quick survey section
+            if (!quickSurveySection.classList.contains('hidden')) {
+                quickSurveySection.querySelector('h3').textContent = translations[lang].quickSurveyTitle;
+                quickSurveySection.querySelector('p').textContent = translations[lang].quickSurveyText;
+                quickSurveySection.querySelector('a').textContent = translations[lang].quickSurveyLinkText;
+            }
+
+            if (!chatBotWindow.classList.contains('hidden')) {
+                document.querySelector('#chatBotWindow .chat-header span').textContent = translations[lang].chatbotTitle;
+                document.querySelector('#chatInput').setAttribute('placeholder', translations[lang].chatPlaceholder);
+                document.querySelector('#sendChatBtn').textContent = translations[lang].chatSendButton;
+            }
+            document.querySelector('#termsModal h2').textContent = translations[lang].termsTitle;
+            document.querySelector('#termsModal p[data-lang-key="termsContent1"]').textContent = translations[lang].termsContent1;
+            document.querySelector('#termsModal li[data-lang-key="termsPoint1"]').textContent = translations[lang].termsPoint1;
+            document.querySelector('#termsModal li[data-lang-key="termsPoint2"]').textContent = translations[lang].termsPoint2;
+            document.querySelector('#termsModal li[data-lang-key="termsPoint3"]').textContent = translations[lang].termsPoint3;
+            document.querySelector('#termsModal li[data-lang-key="termsPoint4"]').textContent = translations[lang].termsPoint4;
+            document.querySelector('#termsModal p[data-lang-key="termsContent2"]').textContent = translations[lang].termsContent2;
+            document.querySelector('#acceptTermsBtn').textContent = translations[lang].acceptTermsButton;
+            openTermsLink.textContent = translations[lang].termsLinkText;
+        }
+
+        function updateCitySuggestions() {
+            const selectedCountry = countrySelect.value;
+            cityInput.value = '';
+            citySuggestionsDatalist.innerHTML = '';
+
+            if (countryCities[selectedCountry]) {
+                countryCities[selectedCountry].forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    citySuggestionsDatalist.appendChild(option);
+                });
+            }
+        }
+
+        function displayError(message) {
+            errorMessage.textContent = message;
+            errorDisplay.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorDisplay.classList.add('hidden');
+            errorMessage.textContent = '';
+        }
+
+        function showStep(stepIndex, direction = 'next') {
+            formSteps.forEach((step, index) => {
+                step.classList.add('hidden');
+                step.classList.remove('step-transition-enter', 'step-transition-exit-left', 'step-transition-enter-left', 'step-transition-exit-right');
+            });
+
+            if (currentStep !== stepIndex) {
+                const prevStep = formSteps[currentStep];
+                if (prevStep) {
+                    prevStep.classList.remove('hidden');
+                    if (direction === 'next') {
+                        prevStep.classList.add('step-transition-exit-left');
+                    } else {
+                        prevStep.classList.add('step-transition-exit-right');
+                    }
+                    prevStep.addEventListener('animationend', () => {
+                        prevStep.classList.add('hidden');
+                        prevStep.classList.remove('step-transition-exit-left', 'step-transition-exit-right');
+                    }, { once: true });
+                }
+            }
+
+            const currentFormStep = formSteps[stepIndex];
+            currentFormStep.classList.remove('hidden');
+            if (direction === 'next') {
+                currentFormStep.classList.add('step-transition-enter');
+            } else {
+                currentFormStep.classList.add('step-transition-enter-left');
+            }
+
+            stepIndicators.forEach((indicator, index) => {
+                if (index === stepIndex) {
+                    indicator.classList.remove('bg-gray-300');
+                    indicator.classList.add('bg-green-500');
+                } else {
+                    indicator.classList.remove('bg-green-500');
+                    indicator.classList.add('bg-gray-300');
+                }
+            });
+
+            if (stepIndex === 0) {
+                prevStepBtn.classList.add('hidden');
+            } else {
+                prevStepBtn.classList.remove('hidden');
+            }
+
+            if (stepIndex === formSteps.length - 1) {
+                nextStepBtn.classList.add('hidden');
+                generateDietPlanBtn.classList.remove('hidden');
+            } else {
+                nextStepBtn.classList.remove('hidden');
+                generateDietPlanBtn.classList.add('hidden');
+            }
+
+            currentStep = stepIndex;
+            hideError();
+        }
+
+        function validateCurrentStep() {
+            switch (currentStep) {
+                case 0: // Personal Details
+                    if (!userNameInput.value.trim() || !genderSelect.value || !ageRangeSelect.value || !dietPreferenceSelect.value) {
+                        displayError(translations[languageSelector.value].validationErrorNameGenderAge);
+                        return false;
+                    }
+                    break;
+                case 1: // Physical Attributes
+                    if (!heightInput.value || !weightInput.value) {
+                        displayError(translations[languageSelector.value].validationErrorHeightWeight);
+                        return false;
+                    }
+                    if (parseInt(heightInput.value) <= 0 || parseInt(weightInput.value) <= 0) {
+                        displayError(translations[languageSelector.value].validationErrorHeightWeightPositive);
+                        return false;
+                    }
+                    break;
+                case 2: // Location & Season
+                    if (!countrySelect.value || !cityInput.value.trim() || !seasonSelect.value) {
+                        displayError(translations[languageSelector.value].validationErrorLocationSeason);
+                        return false;
+                    }
+                    break;
+                case 3: // Health Goal (Optional) - No validation needed here
+                    break;
+                case 4: // Health Conditions (Optional) - No strict validation needed here
+                    break;
+            }
+            return true;
+        }
+
+        nextStepBtn.addEventListener('click', () => {
+            if (validateCurrentStep()) {
+                showStep(currentStep + 1, 'next');
+            }
+        });
+
+        prevStepBtn.addEventListener('click', () => {
+            showStep(currentStep - 1, 'prev');
+        });
+
+        countrySelect.addEventListener('change', updateCitySuggestions);
+
+        languageSelector.addEventListener('change', (event) => {
+            setLanguage(event.target.value);
+            if (currentDietPlan) {
+                renderDietPlanContent(currentDietPlan, event.target.value);
+            }
+            if (!shoppingListDisplay.classList.contains('hidden')) {
+                document.querySelector('#shoppingListDisplay h3').textContent = translations[event.target.value].shoppingListTitle;
+            }
+            if (!nutritionalInfoDisplay.classList.contains('hidden')) {
+                document.querySelector('#nutritionalInfoDisplay h3').textContent = translations[event.target.value].nutritionalSummaryTitle;
+            }
+            // Update quick survey section on language change
+            if (!quickSurveySection.classList.contains('hidden')) {
+                quickSurveySection.querySelector('h3').textContent = translations[event.target.value].quickSurveyTitle;
+                quickSurveySection.querySelector('p').textContent = translations[event.target.value].quickSurveyText;
+                quickSurveySection.querySelector('a').textContent = translations[event.target.value].quickSurveyLinkText;
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            landingPage.classList.remove('fade-in');
+            landingPage.classList.add('fade-out');
+            landingPage.addEventListener('animationend', () => {
+                landingPage.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                mainApp.classList.add('fade-in');
+            }, { once: true });
+        });
+
+        acceptTermsBtn.addEventListener('click', () => {
+            termsModal.classList.add('hidden');
+            localStorage.setItem('termsAccepted', 'true');
+        });
+
+        closeTermsBtn.addEventListener('click', () => {
+            termsModal.classList.add('hidden');
+        });
+
+        openTermsLink.href = "#";
+        openTermsLink.className = "text-blue-600 hover:underline cursor-pointer text-sm mt-4 block text-center";
+        openTermsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            termsModal.classList.remove('hidden');
+        });
+        document.querySelector('.bg-white.p-8.rounded-xl.shadow-2xl.w-full.max-w-3xl.border.border-gray-200').appendChild(openTermsLink);
+
+        window.onload = () => {
+            setLanguage(languageSelector.value);
+            if (localStorage.getItem('termsAccepted') !== 'true') {
+                termsModal.classList.remove('hidden');
+            } else {
+                landingPage.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+            }
+            showStep(0);
+        };
+
+        function setLoading(buttonId, isLoading, buttonTextId, spinnerId) {
+            const button = document.getElementById(buttonId);
+            const textSpan = document.getElementById(buttonTextId);
+            const spinnerDiv = document.getElementById(spinnerId);
+
+            if (isLoading) {
+                button.disabled = true;
+                button.classList.add('bg-gray-400', 'cursor-not-allowed');
+                button.classList.remove('bg-green-600', 'hover:bg-green-700', 'active:scale-95', 'bg-blue-600', 'hover:bg-blue-700', 'bg-purple-600', 'hover:bg-purple-700', 'bg-gray-600', 'hover:bg-gray-700');
+                textSpan.classList.add('hidden');
+                spinnerDiv.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                button.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                if (buttonId === 'generateDietPlanBtn') {
+                    button.classList.add('bg-green-600', 'hover:bg-green-700', 'active:scale-95');
+                } else if (buttonId === 'generateShoppingListBtn') {
+                    button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'active:scale-95');
+                } else if (buttonId === 'getNutritionalInfoBtn') {
+                    button.classList.add('bg-purple-600', 'hover:bg-purple-700', 'active:scale-95');
+                } else if (buttonId === 'downloadPlanBtn') {
+                    button.classList.add('bg-gray-600', 'hover:bg-gray-700', 'active:scale-95');
+                }
+                textSpan.classList.remove('hidden');
+                spinnerDiv.classList.add('hidden');
+            }
+        }
+
+        async function callGeminiApi(prompt, responseSchema = null, retries = 3, initialDelay = 1000) {
+            const apiKey = "AIzaSyC1mwjQNKj854FbiaLS_QPrN8DSf87i9JU"; // API Key added here
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: responseSchema ? { responseMimeType: "application/json", responseSchema } : undefined,
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        let text = result.candidates[0].content.parts[0].text;
+                        if (text.startsWith('```json') && text.endsWith('```')) {
+                            text = text.substring(7, text.length - 3).trim();
+                        }
+                        return text;
+                    } else if (response.status === 503 || response.status === 429) {
+                        const delay = initialDelay * Math.pow(2, i);
+                        console.warn(`API call failed with status ${response.status}. Retrying in ${delay / 1000} seconds... (Attempt ${i + 1}/${retries})`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.error.message}`);
+                    }
+                } catch (error) {
+                    if (i === retries - 1) {
+                        throw error;
+                    }
+                    console.error(`Attempt ${i + 1} failed: ${error.message}. Retrying...`);
+                    const delay = initialDelay * Math.pow(2, i);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            throw new Error(`API call failed after ${retries} attempts.`);
+        }
+
+        async function saveDataToBackend(data) {
+            console.log("Attempting to save data to Google Sheets:", data);
+            const googleSheetsApiUrl = 'https://script.google.com/macros/s/AKfycbzkzGJGpbIlr1SV_Z_1nqcFFQlxRsTTsQdO18Djsq-iie6XkYj6g1dB6qXKWoh3-4-4/exec'; // This URL needs to be valid and accessible
+
+            try {
+                const response = await fetch(googleSheetsApiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', // Add this line
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok || response.type === 'opaque') {
+                    console.log("Data saved successfully to Google Sheets.");
+                } else {
+                    console.error("Failed to save data to Google Sheets. Status:", response.status);
+                }
+            } catch (error) {
+                console.error("Failed to save data:", error);
+            }
+        }
+
+        function renderDietPlanContent(dietPlanData, lang) {
+            dailyWaterIntakeElement.textContent = `${translations[lang].dailyWaterIntakeLabel}: ${dietPlanData.dailyWaterIntake}`;
+
+            let htmlContent = '';
+            dietPlanData.meals.forEach((meal, mealIndex) => {
+                htmlContent += `
+                    <div class="mb-6 p-4 bg-white rounded-lg shadow-md border border-gray-100">
+                        <h3 class="text-xl font-semibold text-green-700 mb-3">${meal.mealType} (${meal.timeOfEating})</h3>
+                `;
+                meal.dishes.forEach((dish, dishIndex) => {
+                    htmlContent += `
+                        <div class="mb-4 last:mb-0">
+                            <p class="font-medium text-lg text-gray-900">${dish.name}</p>
+                            <p class="text-gray-700 text-sm">
+                                <span class="font-semibold">${translations[lang].ingredientsLabel}:</span> ${dish.ingredients.join(', ')}
+                            </p>
+                            <p class="text-gray-700 text-sm">
+                                <span class="font-semibold">${translations[lang].benefitsLabel}:</span> ${dish.benefits}
+                            </p>
+                            <p class="text-gray-700 text-sm">
+                                <span class="font-semibold">${translations[lang].seasonalAvailabilityLabel}:</span> ${dish.seasonalAvailability}
+                            </p>
+                            <button class="get-recipe-btn py-2 px-4 mt-2 rounded-lg text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-200"
+                                data-dish-name="${dish.name}"
+                                data-meal-type="${meal.mealType}"
+                                data-ingredients="${dish.ingredients.join(', ')}"
+                                data-benefits="${dish.benefits}"
+                                data-seasonal-availability="${dish.seasonalAvailability}"
+                                data-meal-index="${mealIndex}"
+                                data-dish-index="${dishIndex}"
+                            >
+                                ✨ ${translations[lang].getRecipeButton}
+                            </button>
+                            <div id="recipe-${mealIndex}-${dishIndex}" class="recipe-display mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hidden">
+                                <h4 class="font-semibold text-gray-800 mb-2">${translations[lang].recipeTitle} ${dish.name}:</h4>
+                                <div class="recipe-content"></div>
+                                <div class="recipe-spinner hidden flex items-center justify-center mt-2">
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-gray-700">${translations[lang].generatingRecipe}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                htmlContent += `</div>`;
+            });
+            dietPlanContent.innerHTML = htmlContent;
+
+            document.querySelectorAll('.get-recipe-btn').forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const dishName = event.target.dataset.dishName;
+                    const mealType = event.target.dataset.mealType;
+                    const ingredients = event.target.dataset.ingredients;
+                    const benefits = event.target.dataset.benefits;
+                    const seasonalAvailability = event.target.dataset.seasonalAvailability;
+                    const mealIndex = event.target.dataset.mealIndex;
+                    const dishIndex = event.target.dataset.dishIndex;
+                    const recipeDisplay = document.getElementById(`recipe-${mealIndex}-${dishIndex}`);
+                    const recipeContent = recipeDisplay.querySelector('.recipe-content');
+                    const recipeSpinner = recipeDisplay.querySelector('.recipe-spinner');
+
+                    recipeDisplay.classList.remove('hidden');
+                    recipeContent.innerHTML = '';
+                    recipeSpinner.classList.remove('hidden');
+                    event.target.disabled = true;
+
+                    try {
+                        const userContext = {
+                            userName: userNameInput.value,
+                            gender: genderSelect.value,
+                            country: countrySelect.value,
+                            city: cityInput.value,
+                            season: seasonSelect.value,
+                            ageRange: ageRangeSelect.value,
+                            height: heightInput.value,
+                            weight: weightInput.value,
+                            diseases: diseasesInput.value,
+                            healthGoal: healthGoalSelect.value // Include health goal
+                        };
+                        const recipe = await generateRecipe(dishName, mealType, ingredients, benefits, seasonalAvailability, userContext);
+                        recipeContent.innerHTML = recipe.replace(/\n/g, '<br />');
+                    } catch (err) {
+                        console.error("Error generating recipe:", err);
+                        recipeContent.innerHTML = `<p class="text-red-600">${translations[languageSelector.value].failedToGenerateRecipe}: ${err.message}</p>`;
+                    } finally {
+                        recipeSpinner.classList.add('hidden');
+                        event.target.disabled = false;
+                    }
+                });
+            });
+        }
+
+        async function generateRecipe(dishName, mealType, ingredients, benefits, seasonalAvailability, userContext) {
+            const selectedLanguage = languageSelector.value;
+
+            const prompt = `
+                Generate a simple recipe for "${dishName}" which is a ${mealType} from a diet plan.
+                Consider these key details:
+                - Main Ingredients: ${ingredients}
+                - Benefits: ${benefits}
+                - Seasonal Availability: ${seasonalAvailability}
+                - User Context: Name: ${userContext.userName}, Gender: ${userContext.gender}, Country: ${userContext.country}, City: ${userContext.city}, Season: ${userContext.season}, Age Range: ${userContext.ageRange}, Height: ${userContext.height}cm, Weight: ${userContext.weight}kg, Health Conditions: ${userContext.diseases || 'None'}, Health Goal: ${userContext.healthGoal || 'Not specified'}.
+
+                Provide the recipe in ${selectedLanguage === 'en' ? 'English' : selectedLanguage === 'hi' ? 'Hindi' : 'Marathi'}.
+                Include:
+                1.  A brief introduction to the dish.
+                2.  Ingredients list with approximate quantities.
+                3.  Step-by-step preparation instructions.
+                4.  Optional: A small tip related to climate-friendly cooking or local sourcing.
+                Ensure the output is plain text, without markdown formatting like asterisks (*), bolding (**), or bullet points. Use numbered lists for steps.
+            `;
+
+            try {
+                const recipeText = await callGeminiApi(prompt);
+                return recipeText;
+            } catch (error) {
+                console.error("Error in generateRecipe API call:", error);
+                throw new Error(translations[selectedLanguage].failedToGenerateRecipe);
+            }
+        }
+
+        generateDietPlanBtn.addEventListener('click', async () => {
+            if (!validateCurrentStep()) {
+                return;
+            }
+
+            setLoading('generateDietPlanBtn', true, 'dietPlanBtnText', 'dietPlanSpinner');
+            hideError();
+            dietPlanDisplay.classList.add('hidden');
+            shoppingListDisplay.classList.add('hidden');
+            nutritionalInfoDisplay.classList.add('hidden');
+            quickSurveySection.classList.add('hidden'); // Hide survey section initially
+            currentDietPlan = null;
+            currentShoppingList = null;
+            currentNutritionalSummary = null;
+
+            const userName = userNameInput.value;
+            const gender = genderSelect.value;
+            const country = countrySelect.value;
+            const city = cityInput.value;
+            const season = seasonSelect.value;
+            const ageRange = ageRangeSelect.value;
+            const height = heightInput.value;
+            const weight = weightInput.value;
+            const diseases = diseasesInput.value;
+            const dietPreference = dietPreferenceSelect.value;
+            const healthGoal = healthGoalSelect.value; // Get the selected health goal
+            const selectedLanguage = languageSelector.value;
+
+            currentUserData = { // Store all user data
+                name: userName,
+                gender: gender,
+                country: country,
+                city: city,
+                season: season,
+                ageRange: ageRange,
+                height: height,
+                weight: weight,
+                diseases: diseases,
+                dietPreference: dietPreference,
+                healthGoal: healthGoal || 'Not specified', // Add health goal to stored user data, default if not selected
+                language: selectedLanguage
+            };
+            
+            await saveDataToBackend(currentUserData);
+
+            const prompt = `
+                Generate a climate-friendly, personalized diet plan for ${userName} (${gender}).
+                Here are the details:
+                - Country: ${country}
+                - City: ${city}
+                - Season: ${season}
+                - Age Range: ${ageRange}
+                - Height: ${height} cm
+                - Weight: ${weight} kg
+                - Health Conditions (if any): ${diseases || 'None'}
+                - Diet Preference: ${dietPreference}
+                - Primary Health Goal: ${healthGoal || 'Not specified'}
+                - Focus on local and seasonal ingredients available in ${city}, ${country}.
+                - The diet plan should specifically help ${userName} achieve their goal of "${healthGoal || 'general health and climate-friendliness'}".
+                - If applicable for ${country}, consider and mention commonly distributed food products under government schemes (e.g., Public Distribution System - PDS in India), integrating them into the diet plan.
+                - Provide all output in ${selectedLanguage === 'en' ? 'English' : selectedLanguage === 'hi' ? 'Hindi' : 'Marathi'}.
+
+                Please provide a detailed plan for three meals:
+                1. Morning Meal
+                2. Evening Meal
+                3. Night Meal
+
+                For each meal, include a suggested "Time of Eating".
+                Also, include a "Daily Water Intake" recommendation for the entire day.
+
+                The output MUST be a JSON object with two top-level keys: "dailyWaterIntake" (string) and "meals" (array).
+                The "meals" key should contain an array of meal objects, where each object represents a meal.
+                Each meal object should have:
+                - "mealType": (e.g., "Morning Meal", "Evening Meal", "Night Meal")
+                    - "timeOfEating": (e.g., "7:00 AM", "1:00 PM", "8:00 PM")
+                    - "dishes": an array of dish objects.
+                    Each dish object should have:
+                        - "name": (e.g., "Oats with Berries and Nuts")
+                        - "ingredients": an array of strings (e.g., ["Rolled oats", "Mixed berries"])
+                        - "benefits": a string describing health and climate benefits.
+                        - "seasonalAvailability": a string describing seasonal availability in the specified location.
+                Ensure all string values in the JSON are plain text, without markdown formatting like asterisks (*), bolding (**), or bullet points.
+            `;
+
+            const dietPlanSchema = {
+                type: "OBJECT",
+                properties: {
+                    "dailyWaterIntake": { "type": "STRING" },
+                    "meals": {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "mealType": { "type": "STRING" },
+                                "timeOfEating": { "type": "STRING" },
+                                "dishes": {
+                                    type: "ARRAY",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            "name": { "type": "STRING" },
+                                            "ingredients": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                            "benefits": { "type": "STRING" },
+                                            "seasonalAvailability": { "type": "STRING" }
+                                        },
+                                        required: ["name", "ingredients", "benefits", "seasonalAvailability"]
+                                    }
+                                }
+                            },
+                            required: ["mealType", "timeOfEating", "dishes"]
+                        }
+                    }
+                },
+                required: ["dailyWaterIntake", "meals"]
+            };
+
+            try {
+                const jsonText = await callGeminiApi(prompt, dietPlanSchema);
+                currentDietPlan = JSON.parse(jsonText);
+                
+                renderDietPlanContent(currentDietPlan, selectedLanguage);
+                dietPlanDisplay.classList.remove('hidden');
+                dietPlanDisplay.classList.add('animate-fadeInSlideUp');
+
+                // Show the quick survey section after diet plan is displayed
+                quickSurveySection.classList.remove('hidden');
+                quickSurveySection.classList.add('animate-popIn');
+
+            } catch (err) {
+                console.error("Error generating diet plan:", err);
+                displayError(`Failed to generate diet plan: ${err.message}. Please check your inputs and try again.`);
+            } finally {
+                setLoading('generateDietPlanBtn', false, 'dietPlanBtnText', 'dietPlanSpinner');
+            }
+        });
+
+        generateShoppingListBtn.addEventListener('click', async () => {
+            setLoading('generateShoppingListBtn', true, 'shoppingListBtnText', 'shoppingListSpinner');
+            hideError();
+            shoppingListDisplay.classList.add('hidden');
+
+            if (!currentDietPlan) {
+                displayError(translations[languageSelector.value].generateDietPlanFirstError);
+                setLoading('generateShoppingListBtn', false, 'shoppingListBtnText', 'shoppingListSpinner');
+                return;
+            }
+
+            const dietPlanString = JSON.stringify(currentDietPlan, null, 2);
+            const selectedLanguage = languageSelector.value;
+
+            const prompt = `
+                Based on the following structured diet plan, generate a concise shopping list.
+                Provide the list in ${selectedLanguage === 'en' ? 'English' : selectedLanguage === 'hi' ? 'Hindi' : 'Marathi'}.
+                Group similar items and provide quantities where implied.
+                Ensure the output is plain text, without markdown formatting like asterisks (*), bolding (**), or bullet points. Use numbered lists or line breaks for items.
+                Diet Plan:
+                ${dietPlanString}
+            `;
+
+            try {
+                const text = await callGeminiApi(prompt);
+                currentShoppingList = text; // Store the shopping list
+                shoppingListContent.innerHTML = text.replace(/\n/g, '<br />');
+                shoppingListDisplay.classList.remove('hidden');
+                shoppingListDisplay.classList.add('animate-fadeInSlideUp');
+            } catch (err) {
+                console.error("Error generating shopping list:", err);
+                displayError(`${translations[selectedLanguage].failedToGenerateShoppingList}: ${err.message}`);
+            } finally {
+                setLoading('generateShoppingListBtn', false, 'shoppingListBtnText', 'shoppingListSpinner');
+            }
+        });
+
+        getNutritionalInfoBtn.addEventListener('click', async () => {
+            setLoading('getNutritionalInfoBtn', true, 'nutritionalInfoBtnText', 'nutritionalInfoSpinner');
+            hideError();
+            nutritionalInfoDisplay.classList.add('hidden');
+
+            if (!currentDietPlan) {
+                displayError(translations[languageSelector.value].generateDietPlanFirstError);
+                setLoading('getNutritionalInfoBtn', false, 'nutritionalInfoBtnText', 'nutritionalInfoSpinner');
+                return;
+            }
+
+            const dietPlanString = JSON.stringify(currentDietPlan, null, 2);
+            const selectedLanguage = languageSelector.value;
+
+            const prompt = `
+                Based on the following structured diet plan, provide an estimated nutritional summary (calories, protein, carbohydrates, fats).
+                Provide the summary in ${selectedLanguage === 'en' ? 'English' : selectedLanguage === 'hi' ? 'Hindi' : 'Marathi'}.
+                Provide a general estimate, not precise values, and state any assumptions made.
+                Ensure the output is plain text, without markdown formatting like asterisks (*), bolding (**), or bullet points. Use numbered lists or line breaks for items.
+                Diet Plan:
+                ${dietPlanString}
+            `;
+
+            try {
+                const text = await callGeminiApi(prompt);
+                currentNutritionalSummary = text; // Store the nutritional summary
+                nutritionalInfoContent.innerHTML = text.replace(/\n/g, '<br />');
+                nutritionalInfoDisplay.classList.remove('hidden');
+                nutritionalInfoDisplay.classList.add('animate-fadeInSlideUp');
+            } catch (err) {
+                console.error("Error getting nutritional info:", err);
+                displayError(`${translations[selectedLanguage].failedToGetNutritionalInfo}: ${err.message}`);
+            } finally {
+                setLoading('getNutritionalInfoBtn', false, 'nutritionalInfoBtnText', 'nutritionalInfoSpinner');
+            }
+        });
+
+        downloadPlanBtn.addEventListener('click', async () => {
+            setLoading('downloadPlanBtn', true, 'downloadPlanBtn', 'dietPlanSpinner'); // Reusing dietPlanSpinner for simplicity, or create a new one
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const margin = 10;
+            let yOffset = margin;
+
+            // Function to add text with line breaks
+            const addText = (text, x, y, maxWidth, fontSize = 12, lineHeight = 1.2) => {
+                doc.setFontSize(fontSize);
+                const lines = doc.splitTextToSize(text, maxWidth);
+                lines.forEach(line => {
+                    if (yOffset + (fontSize * lineHeight) > doc.internal.pageSize.height - margin) {
+                        doc.addPage();
+                        yOffset = margin;
+                    }
+                    doc.text(line, x, yOffset);
+                    yOffset += fontSize * lineHeight;
+                });
+                return yOffset;
+            };
+
+            // Add User Details
+            addText('--- Personalized Diet Plan ---', margin, yOffset, doc.internal.pageSize.width - 2 * margin, 16);
+            yOffset += 10;
+            addText('User Details:', margin, yOffset, doc.internal.pageSize.width - 2 * margin, 14);
+            yOffset += 5;
+            for (const key in currentUserData) {
+                addText(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${currentUserData[key]}`, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 10);
+            }
+            yOffset += 10;
+
+            // Add Diet Plan
+            if (currentDietPlan) {
+                addText(`${translations[languageSelector.value].personalizedDietPlanTitle}`, margin, yOffset, doc.internal.pageSize.width - 2 * margin, 14);
+                yOffset += 5;
+                addText(`${translations[languageSelector.value].dailyWaterIntakeLabel}: ${currentDietPlan.dailyWaterIntake}`, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 10);
+                yOffset += 10;
+
+                currentDietPlan.meals.forEach(meal => {
+                    addText(`${meal.mealType} (${meal.timeOfEating}):`, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 12);
+                    yOffset += 5;
+                    meal.dishes.forEach(dish => {
+                        addText(`  - ${dish.name}`, margin + 10, yOffset, doc.internal.pageSize.width - 2 * margin - 10, 10);
+                        yOffset += 5;
+                        addText(`    ${translations[languageSelector.value].ingredientsLabel}: ${dish.ingredients.join(', ')}`, margin + 15, yOffset, doc.internal.pageSize.width - 2 * margin - 15, 9);
+                        yOffset += 4;
+                        addText(`    ${translations[languageSelector.value].benefitsLabel}: ${dish.benefits}`, margin + 15, yOffset, doc.internal.pageSize.width - 2 * margin - 15, 9);
+                        yOffset += 4;
+                        addText(`    ${translations[languageSelector.value].seasonalAvailabilityLabel}: ${dish.seasonalAvailability}`, margin + 15, yOffset, doc.internal.pageSize.width - 2 * margin - 15, 9);
+                        yOffset += 8; // Extra space after each dish
+                    });
+                    yOffset += 5; // Extra space after each meal
+                });
+            }
+
+            // Add Shopping List
+            if (currentShoppingList) {
+                addText(`--- ${translations[languageSelector.value].shoppingListTitle} ---`, margin, yOffset, doc.internal.pageSize.width - 2 * margin, 14);
+                yOffset += 5;
+                addText(currentShoppingList, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 10);
+                yOffset += 10;
+            }
+
+            // Add Nutritional Summary
+            if (currentNutritionalSummary) {
+                addText(`--- ${translations[languageSelector.value].nutritionalSummaryTitle} ---`, margin, yOffset, doc.internal.pageSize.width - 2 * margin, 14);
+                yOffset += 5;
+                addText(currentNutritionalSummary, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 10);
+                yOffset += 10;
+            }
+
+            // Add Disclaimer
+            addText(`--- ${translations[languageSelector.value].referencesDisclaimerTitle} ---`, margin, yOffset, doc.internal.pageSize.width - 2 * margin, 12);
+            yOffset += 5;
+            addText(translations[languageSelector.value].referencesDisclaimerText1, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 9);
+            yOffset += 5;
+            addText(translations[languageSelector.value].referencesDisclaimerText2, margin + 5, yOffset, doc.internal.pageSize.width - 2 * margin - 5, 9);
+            yOffset += 10;
+
+            doc.save(`DietPlan_${currentUserData.name.replace(/\s/g, '_') || 'User'}_${new Date().toISOString().slice(0, 10)}.pdf`);
+            setLoading('downloadPlanBtn', false, 'downloadPlanBtn', 'dietPlanSpinner');
+        });
+
+        chatToggleBtn.addEventListener('click', () => {
+            if (chatBotWindow.classList.contains('hidden')) {
+                chatBotWindow.classList.remove('hidden');
+                chatBotWindow.classList.add('fade-in');
+                chatBotWindow.classList.remove('fade-out');
+            } else {
+                chatBotWindow.classList.add('fade-out');
+                chatBotWindow.classList.remove('fade-in');
+                chatBotWindow.addEventListener('animationend', () => {
+                    chatBotWindow.classList.add('hidden');
+                }, { once: true });
+            }
+        });
+
+        closeChatBtn.addEventListener('click', () => {
+            chatBotWindow.classList.add('fade-out');
+            chatBotWindow.classList.remove('fade-in');
+            chatBotWindow.addEventListener('animationend', () => {
+                chatBotWindow.classList.add('hidden');
+            }, { once: true });
+        });
+
+        sendChatBtn.addEventListener('click', async () => {
+            const userMessage = chatInput.value.trim();
+            if (userMessage === '') return;
+
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'chat-message-user self-end';
+            userMessageDiv.textContent = userMessage;
+            chatMessages.appendChild(userMessageDiv);
+            chatInput.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const aiSpinnerDiv = document.createElement('div');
+            aiSpinnerDiv.className = 'chat-spinner self-start';
+            aiSpinnerDiv.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-gray-700">${translations[languageSelector.value].gettingInfo}</span>`;
+            chatMessages.appendChild(aiSpinnerDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const chatPrompt = `The user is asking: "${userMessage}". Please respond as a helpful AI Diet Bot. Keep your answers concise and focused on climate-friendly diet, nutrition, or general health. Do not provide medical advice. Respond in ${languageSelector.value === 'en' ? 'English' : languageSelector.value === 'hi' ? 'Hindi' : 'Marathi'}. Ensure the output is plain text, without markdown formatting like asterisks (*), bolding (**), or bullet points. Use numbered lists or line breaks for items.`;
+                const aiResponse = await callGeminiApi(chatPrompt);
+
+                aiSpinnerDiv.remove();
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = 'chat-message-ai self-start';
+                aiMessageDiv.textContent = aiResponse;
+                chatMessages.appendChild(aiMessageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                aiSpinnerDiv.remove();
+                const errorMessageDiv = document.createElement('div');
+                errorMessageDiv.className = 'chat-message-ai self-start text-red-600';
+                errorMessageDiv.textContent = `Error: ${error.message}`;
+                chatMessages.appendChild(errorMessageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+
+        chatInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendChatBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
